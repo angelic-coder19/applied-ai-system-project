@@ -12,7 +12,10 @@ import logging
 import sys
 from pathlib import Path
 
-from dotenv import load_dotenv
+try:
+    from src.env_loader import load_dotenv
+except ImportError:
+    from env_loader import load_dotenv
 
 load_dotenv()
 
@@ -24,10 +27,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 try:
-    from .recommender import load_songs, recommend_songs
+    from .recommender_v2 import load_songs, recommend_songs, query_conflict_penalty
     from .llm_client import parse_preferences, generate_recommendation
 except ImportError:
-    from recommender import load_songs, recommend_songs
+    from recommender_v2 import load_songs, recommend_songs, query_conflict_penalty
     from llm_client import parse_preferences, generate_recommendation
 
 PROFILES = {
@@ -136,11 +139,14 @@ def main() -> None:
 
     # Step 2 — Retrieval: existing scoring algorithm ranks the catalog
     songs = load_songs(songs_path)
-    recommendations = recommend_songs(user_prefs, songs, k=5)
+    conflict_penalty = query_conflict_penalty(user_query)
+    recommendations = recommend_songs(user_prefs, songs, k=5, query=user_query)
     logger.info("Retrieved songs: %s", [s["title"] for s, _, _ in recommendations])
 
     print(f"\n{DIV}")
     print(f"  Top {len(recommendations)} Matches  ({len(songs)} songs scored)")
+    if conflict_penalty > 0.0:
+        print("  Note: your request contains mixed or conflicting signals, so these matches are presented more cautiously.")
     print(DIV)
     for rank, (song, score, _) in enumerate(recommendations, start=1):
         bar = "#" * int(score * 20)
@@ -158,7 +164,11 @@ def main() -> None:
         for song, score, _ in recommendations
     ]
     try:
-        ai_response = generate_recommendation(user_query, songs_for_llm)
+        ai_response = generate_recommendation(
+            user_query,
+            songs_for_llm,
+            low_confidence=(conflict_penalty > 0.0),
+        )
     except EnvironmentError as exc:
         print(f"\n  Setup error: {exc}")
         sys.exit(1)

@@ -165,6 +165,27 @@ def retrieve_candidates(query: str, songs: List, n: int = 20) -> List:
     return [song for song, _ in ranked[:n]]
 
 
+def _query_conflict_penalty(query: str) -> float:
+    """Detect conflicting language in the raw user query and return a non-negative score penalty."""
+    query_tokens = set(_tokenize(query))
+    if not query_tokens:
+        return 0.0
+
+    penalty = 0.0
+    if query_tokens & _LOW_ENERGY_WORDS and query_tokens & _HIGH_ENERGY_WORDS:
+        penalty += 0.18
+    if query_tokens & _LOW_VALENCE_WORDS and query_tokens & _HIGH_VALENCE_WORDS:
+        penalty += 0.18
+    if query_tokens & _ACOUSTIC_WORDS and query_tokens & _ELECTRONIC_WORDS:
+        penalty += 0.12
+
+    return min(penalty, 0.35)
+
+
+def query_conflict_penalty(query: str) -> float:
+    return _query_conflict_penalty(query)
+
+
 def score_song(user_prefs: Dict, song) -> Tuple[float, List[str]]:
     score = 0.0
     reasons: List[str] = []
@@ -204,9 +225,15 @@ def score_song(user_prefs: Dict, song) -> Tuple[float, List[str]]:
 
 def recommend_songs(user_prefs: Dict, songs: List, k: int = 5, query: str = "") -> List[Tuple[Dict, float, str]]:
     candidate_songs = retrieve_candidates(query, songs, n=max(k * 4, 20)) if query else songs
-    scored = [
-        (song, *score_song(user_prefs, song))
-        for song in candidate_songs
-    ]
+    confidence_penalty = _query_conflict_penalty(query) if query else 0.0
+
+    scored = []
+    for song in candidate_songs:
+        raw_score, reasons = score_song(user_prefs, song)
+        adjusted_score = max(0.0, raw_score - confidence_penalty)
+        if confidence_penalty > 0.0:
+            reasons.append(f"confidence penalty for conflicting request (-{confidence_penalty:.2f})")
+        scored.append((song, adjusted_score, reasons))
+
     ranked = sorted(scored, key=lambda item: item[1], reverse=True)
     return [(_song_to_dict(song), score, ", ".join(reasons)) for song, score, reasons in ranked[:k]]
