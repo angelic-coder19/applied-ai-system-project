@@ -11,7 +11,10 @@ import logging
 import os
 from typing import Dict, List
 
-from dotenv import load_dotenv
+try:
+    from src.env_loader import load_dotenv
+except ImportError:
+    from env_loader import load_dotenv
 
 load_dotenv()
 
@@ -35,7 +38,7 @@ _DEFAULT_PREFS: Dict = {
     "valence": 0.5,
 }
 
-_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite-preview")
 
 
 def _get_client():
@@ -100,7 +103,7 @@ def parse_preferences(user_query: str) -> Dict:
         return dict(_DEFAULT_PREFS)
 
 
-def generate_recommendation(user_query: str, songs: List[Dict]) -> str:
+def generate_recommendation(user_query: str, songs: List[Dict], low_confidence: bool = False) -> str:
     """
     Generate a conversational recommendation using the retrieved songs.
 
@@ -123,6 +126,12 @@ def generate_recommendation(user_query: str, songs: List[Dict]) -> str:
         "3. Sounds warm and natural, like a knowledgeable friend — not a bullet list\n\n"
         "Do not just list all five songs. Focus on the best fits and say why."
     )
+
+    if low_confidence:
+        prompt += (
+            "\nIf the user's request has mixed or conflicting signals, acknowledge the ambiguity "
+            "and avoid sounding overly confident about the match."
+        )
 
     try:
         client = _get_client()
