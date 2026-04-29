@@ -1,14 +1,30 @@
-from typing import List, Dict, Tuple, Optional
-from dataclasses import dataclass
-import csv
+from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Dict, List, Tuple
+import csv
+import re
+
+_LOW_ENERGY_WORDS = {
+    "calm", "chill", "relaxed", "mellow", "soft", "quiet", "sleep", "study", "lounge"
+}
+_HIGH_ENERGY_WORDS = {
+    "energetic", "upbeat", "dance", "party", "hype", "workout", "drive", "intense", "powerful"
+}
+_HIGH_VALENCE_WORDS = {
+    "happy", "bright", "sunny", "joy", "uplifting", "positive", "cheerful", "optimistic", "glad"
+}
+_LOW_VALENCE_WORDS = {
+    "sad", "dark", "moody", "melancholic", "angry", "broody", "somber", "lonely"
+}
+_ACOUSTIC_WORDS = {
+    "acoustic", "organic", "unplugged", "folk", "natural", "stripped"
+}
+_ELECTRONIC_WORDS = {
+    "electronic", "synth", "synthwave", "produced", "digital", "beat", "edm", "trance", "techno"
+}
 
 @dataclass
 class Song:
-    """
-    Represents a song and its attributes.
-    Required by tests/test_recommender.py
-    """
     id: int
     title: str
     artist: str
@@ -19,33 +35,57 @@ class Song:
     valence: float
     danceability: float
     acousticness: float
+    instrumentalness: float = 0.0
+    liveness: float = 0.0
+    popularity: float = 0.0
+    description: str = ""
+
+    def document_text(self) -> str:
+        text_parts = [
+            self.title,
+            self.artist,
+            self.genre,
+            self.mood,
+            self.description,
+        ]
+        return " ".join(part.strip() for part in text_parts if part).lower()
 
 @dataclass
 class UserProfile:
-    """
-    Represents a user's taste preferences.
-    Required by tests/test_recommender.py
-    """
     favorite_genre: str
     favorite_mood: str
     target_energy: float
     likes_acoustic: bool
+    valence: float = 0.5
 
-class Recommender:
-    """
-    OOP implementation of the recommendation logic.
-    Required by tests/test_recommender.py
-    """
-    def __init__(self, songs: List[Song]):
-        self.songs = songs
 
-    def recommend(self, user: UserProfile, k: int = 5) -> List[Song]:
-        # TODO: Implement recommendation logic
-        return self.songs[:k]
+def _get_value(song, key, default=None):
+    if isinstance(song, dict):
+        return song.get(key, default)
+    return getattr(song, key, default)
 
-    def explain_recommendation(self, user: UserProfile, song: Song) -> str:
-        # TODO: Implement explanation logic
-        return "Explanation placeholder"
+
+def _song_to_dict(song):
+    if isinstance(song, dict):
+        return song
+    return asdict(song)
+
+
+def _normalize_text(song) -> str:
+    if isinstance(song, dict):
+        parts = [
+            song.get("title", ""),
+            song.get("artist", ""),
+            song.get("genre", ""),
+            song.get("mood", ""),
+            song.get("description", ""),
+        ]
+        return " ".join(part.strip() for part in parts if part).lower()
+    return song.document_text()
+
+
+def _tokenize(text: str) -> List[str]:
+    return re.findall(r"\b[a-z0-9]+\b", text.lower())
 
 def load_songs(csv_path: str) -> List[Dict]:
     """
