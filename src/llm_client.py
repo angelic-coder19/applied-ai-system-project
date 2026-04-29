@@ -129,8 +129,10 @@ def generate_recommendation(user_query: str, songs: List[Dict], low_confidence: 
 
     if low_confidence:
         prompt += (
-            "\nIf the user's request has mixed or conflicting signals, acknowledge the ambiguity "
-            "and avoid sounding overly confident about the match."
+            "\nThe user request contains mixed or conflicting signals, and the retrieved matches should be treated as lower-confidence suggestions. "
+            "Do not use strong endorsement language like 'you'll love this' or 'perfectly captures.' "
+            "Instead, say that these are the best approximate options available, that the request is hard to satisfy exactly, "
+            "and phrase the recommendation cautiously."
         )
 
     try:
