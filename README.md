@@ -8,11 +8,11 @@
 The original project was the **Modules 1-3 Music Recommender Simulation**. That version focused on representing songs and user taste profiles, building a scoring rule, and ranking candidates from a small dataset. This version extends that work by adding retrieval-aware ranking and query-driven preference interpretation.
 
 ## Demo Video
-[![Beats Buddy 2.0 Demo]](https://www.loom.com/share/a89ce8d705a749c5b7c02d317aefd04a)
+[Watch the Beats Buddy 2.0 demo on Loom](https://www.loom.com/share/8585134b38e24cf88396e0331b49c956)
 
 ## Architecture Overview
 
-![Architecture diagram](assets/Flow Chart - RAG Music Recommender.png)
+![Architecture diagram](assets/Flow%20Chart%20-%20RAG%20Music%20Recommender.png)
 
 The system has three main stages:
 
